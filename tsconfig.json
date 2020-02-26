@@ -3,6 +3,7 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "downlevelIteration": true,
+    "strictPropertyInitialization": false,
     "strict": true,
     "moduleResolution": "node",
     "lib": ["esnext"],

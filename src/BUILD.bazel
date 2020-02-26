@@ -9,8 +9,10 @@ nest_library(
     deps = [
         "@npm//@nestjs/core",
         "@npm//@types/lodash",
+        "@npm//@types/minimist",
         "@npm//discord.js",
         "@npm//lodash",
+        "@npm//minimist",
         "@npm//rxjs",
     ],
 )
