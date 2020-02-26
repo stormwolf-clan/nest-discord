@@ -1,0 +1,16 @@
+load("//tools:defaults.bzl", "nest_library")
+
+nest_library(
+    name = "src",
+    srcs = glob(["**/*.ts"]),
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        "@npm//@nestjs/core",
+        "@npm//@types/lodash",
+        "@npm//discord.js",
+        "@npm//lodash",
+        "@npm//rxjs",
+    ],
+)

@@ -1,0 +1,19 @@
+load("@build_bazel_rules_nodejs//:index.bzl", "nodejs_binary")
+load("//tools:defaults.bzl", "nest_library")
+
+nest_library(
+    name = "src",
+    srcs = glob(["*.ts"]),
+    deps = [
+        "//src",
+        "@npm//@nestjs/core",
+    ],
+)
+
+nodejs_binary(
+    name = "example",
+    data = [
+        ":src",
+    ],
+    entry_point = ":main.ts",
+)
