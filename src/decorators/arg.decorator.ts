@@ -1,1 +1,1 @@
-export function Arg(name?: string): PropertyDecorator {}
+//export function Arg(name?: string): PropertyDecorator {}

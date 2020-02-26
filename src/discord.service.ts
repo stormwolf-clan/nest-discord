@@ -18,8 +18,10 @@ export class DiscordService implements OnModuleInit {
   ) {}
 
   private getCommand(name: string): Command | null {
-    return this.commands.get(name) ||
-      this.commands.find(command => !!command.aliases?.includes(name));
+    return (
+      this.commands.get(name) ||
+      this.commands.find(command => !!command.aliases?.includes(name))
+    );
   }
 
   async onModuleInit(): Promise<void> {
@@ -30,9 +32,9 @@ export class DiscordService implements OnModuleInit {
     await this.client.login(token);
     await bindCallback(this.client.once)('once').toPromise();
 
-
     this.client.on('message', message => {
-      if (!message.content.startsWith(commandPrefix!) || message.author.bot) return;
+      if (!message.content.startsWith(commandPrefix!) || message.author.bot)
+        return;
 
       const args = message.content.slice(commandPrefix.length).split(/ +/);
       const commandName = args.shift()?.toLowerCase();
@@ -48,7 +50,7 @@ export class DiscordService implements OnModuleInit {
         let reply = `You didn't provide any arguments, ${message.author}!`;
 
         if (command.usage) {
-          reply += `\nThe proper usage would be: \`${prefix}${command.name} ${command.usage}\``;
+          reply += `\nThe proper usage would be: \`${commandPrefix}${command.name} ${command.usage}\``;
         }
 
         return message.channel.send(reply);
