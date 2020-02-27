@@ -15,6 +15,7 @@ export function Option(options: string | OptionOptions = {}) {
       throw new Error(`Option cannot be named "help" as its reserved!`);
     }
 
+    options.type = Reflect.getMetadata('design:type', target, propertyKey);
     const commandOptions =
       Reflect.getMetadata(COMMAND_OPTION_OPTIONS, target.constructor) || {};
 

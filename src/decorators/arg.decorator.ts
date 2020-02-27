@@ -15,8 +15,11 @@ export function Arg(options: string | ArgOptions = {}) {
       throw new Error(`Arg cannot be named "help" as its reserved!`);
     }
 
+    options.type = Reflect.getMetadata('design:type', target, propertyKey);
     const commandArgs =
       Reflect.getMetadata(COMMAND_ARG_OPTIONS, target.constructor) || {};
+
+    console.log(options.type.name);
 
     Reflect.defineMetadata(
       COMMAND_ARG_OPTIONS,

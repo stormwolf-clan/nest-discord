@@ -1,12 +1,11 @@
-import { ErrorHandler, ValidateHandler } from './types';
+import { ErrorHandler, TransformHandler, ValidateHandler } from './types';
 
 export interface OptionOptions<T = Record<string, any>, V = string> {
-  // default is property name
   name?: string;
-  // default is property initializer
-  default?: string | number;
+  type?: any;
   description?: string;
   aliases?: string[];
+  transform?: TransformHandler<T, V>;
   validate?: ValidateHandler<T, V>;
   error?: ErrorHandler<T, V>;
 }

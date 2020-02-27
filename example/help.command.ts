@@ -9,10 +9,10 @@ export class HelpCommand implements CommandHandler {
   @Arg({
     mentions: ['users'],
   })
-  user: Discord.ClientUser;
+  user: Discord.User;
 
   @Arg()
-  second = 'test';
+  second: boolean;
 
   @Option()
   one: string;

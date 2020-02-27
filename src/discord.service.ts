@@ -3,21 +3,22 @@ import { ModuleRef } from '@nestjs/core';
 import * as Discord from 'discord.js';
 import * as minimist from 'minimist';
 
+import { CommandsExplorerService } from './services';
+import { USER_MENTION_REGEX } from './constants';
 import { MODULE_OPTIONS } from './tokens';
 import {
   ArgOptions,
   Command,
-  CommandHandler,
   DiscordModuleOptions,
+  ErrorHandler,
+  TransformHandler,
+  ValidateHandler,
 } from './interfaces';
-import { CommandsExplorerService } from './services';
 import {
   CommandsCollection,
   CooldownsCollection,
   TimestampsCollection,
 } from './collections';
-import { MessageMentions } from 'discord.js';
-import { Mention } from './interfaces/types';
 
 @Injectable()
 export class DiscordService implements OnModuleInit {
@@ -33,7 +34,32 @@ export class DiscordService implements OnModuleInit {
     private readonly options: DiscordModuleOptions,
   ) {}
 
-  private async validateOptions(
+  private async transformValue(
+    instance: Record<string, any>,
+    propertyKey: string,
+    type: Function,
+    value: string,
+    transform?: TransformHandler<any, any>,
+  ): Promise<void> {
+    instance[propertyKey] =
+      type.name === 'String'
+        ? String(value)
+        : type.name === 'Number'
+        ? Number(value)
+        : type.name === 'Boolean'
+        ? Boolean(value)
+        : await transform!.bind(instance)(value);
+  }
+
+  /*private async validateValue(
+    instance: Record<string, any>,
+    propertyKey: string,
+    type: Function,
+    validate?: ValidateHandler<any, any>,
+    error?: ErrorHandler<any, any>,
+  ): Promise<void> {}*/
+
+  private async processOptions(
     message: Discord.Message,
     command: Command,
     options: Record<string, string>,
@@ -44,29 +70,56 @@ export class DiscordService implements OnModuleInit {
     });
   }
 
-  private async validateArgs(
+  private async transformArgs(
+    message: Discord.Message,
+    command: Command,
+    args: string[],
+  ) {
+    const commandArgs = Object.entries(command.args);
+
+    await Promise.all(
+      args.map(async (argValue, i) => {
+        const [propertyKey, arg]: [string, ArgOptions] = commandArgs[i];
+
+        if (arg.mentions?.length) {
+          if (arg.transform) {
+            throw new Error(
+              `Cannot transform mentions on ${arg.name} argument`,
+            );
+          }
+
+          const id = USER_MENTION_REGEX.exec(argValue)![1];
+
+          const allMentions = arg.mentions.reduce(
+            (mentions, mention) => [
+              ...message.mentions[mention].values(),
+              ...mentions,
+            ],
+            [] as Array<{ id: string }>,
+          );
+
+          command.instance[propertyKey] = allMentions.find(
+            mention => mention.id === id,
+          );
+        } else {
+          await this.transformValue(
+            command.instance,
+            propertyKey,
+            arg.type,
+            argValue,
+            arg.transform,
+          );
+        }
+      }),
+    );
+  }
+
+  private async processArgs(
     message: Discord.Message,
     command: Command,
     args: string[],
   ): Promise<void> {
-    const commandArgsEntries = Object.entries(command.args);
-    const userMentionRegex = /<@!(.*?)>/;
-    args.forEach((argValue, i) => {
-      const [propertyKey, arg]: [string, ArgOptions] = commandArgsEntries[i];
-      if (arg.mentions?.length) {
-        const id = userMentionRegex.exec(argValue)![1];
-        const allMentions = arg.mentions.reduce(
-          (mentions, mention) => [
-            ...message.mentions[mention].values(),
-            ...mentions,
-          ],
-          [] as any[],
-        );
-        command.instance[propertyKey] = allMentions.find(
-          mention => mention.id === id,
-        );
-      }
-    });
+    await this.transformArgs(message, command, args);
   }
 
   private getCommand(name: string): Command | null {
@@ -153,8 +206,8 @@ export class DiscordService implements OnModuleInit {
           const commandOptions = args;
 
           await Promise.all([
-            this.validateArgs(message, command, commandArgs),
-            this.validateOptions(message, command, commandOptions),
+            this.processArgs(message, command, commandArgs),
+            this.processOptions(message, command, commandOptions),
           ]);
 
           return command.instance.handle(message);
