@@ -14,10 +14,12 @@ export class HelpCommand implements CommandHandler {
   @Arg()
   second: boolean;
 
-  @Option()
+  @Option({
+    description: 'Test',
+  })
   one: string;
 
   handle(message: Discord.Message): void {
-    console.log(this.user);
+    console.log(this);
   }
 }

@@ -6,11 +6,14 @@ import * as minimist from 'minimist';
 import { CommandsExplorerService } from './services';
 import { USER_MENTION_REGEX } from './constants';
 import { MODULE_OPTIONS } from './tokens';
+import { toPromise } from './utils';
+import { ValidationError } from './errors';
 import {
   ArgOptions,
   Command,
   DiscordModuleOptions,
   ErrorHandler,
+  OptionOptions,
   TransformHandler,
   ValidateHandler,
 } from './interfaces';
@@ -38,17 +41,41 @@ export class DiscordService implements OnModuleInit {
     instance: Record<string, any>,
     propertyKey: string,
     type: Function,
-    value: string,
+    value: any,
     transform?: TransformHandler<any, any>,
   ): Promise<void> {
-    instance[propertyKey] =
-      type.name === 'String'
-        ? String(value)
-        : type.name === 'Number'
-        ? Number(value)
-        : type.name === 'Boolean'
-        ? Boolean(value)
-        : await transform!.bind(instance)(value);
+    if (type === Boolean && (value === 'true' || value === 'false')) {
+      instance[propertyKey] = Boolean(value);
+    }
+    /*if (type.name === 'Boolean') {
+      if (value === 'true' || value === 'false') {
+        instance[propertyKey] = Boolean(value);
+      } else {
+        // Should be moved to validation
+        throw new Error(`Whatever value ${value} isn't a valid boolean`);
+      }
+    }*/
+
+    if (type === Number && value != null) {
+      instance[propertyKey] = Number(value);
+      /*if (Number.isNaN(instance[propertyKey])) {
+        throw new Error(`Whatever value ${value} isn't a valid number`);
+      }*/
+    }
+
+    instance[propertyKey] = transform
+      ? await toPromise(transform.bind(instance)(value))
+      : value;
+  }
+
+  private async validateValue(
+    instance: Record<string, any>,
+    propertyKey: string,
+    type: Function,
+    validate?: ValidateHandler<any, any>,
+    error?: ErrorHandler<any, any>,
+  ): Promise<void> {
+    return undefined;
   }
 
   /*private async validateValue(
@@ -72,14 +99,13 @@ export class DiscordService implements OnModuleInit {
 
   private async transformArgs(
     message: Discord.Message,
-    command: Command,
-    args: string[],
+    instance: Command['instance'],
+    commandArgs: [string, ArgOptions][],
+    userArgs: string[],
   ) {
-    const commandArgs = Object.entries(command.args);
-
     await Promise.all(
-      args.map(async (argValue, i) => {
-        const [propertyKey, arg]: [string, ArgOptions] = commandArgs[i];
+      userArgs.map(async (argValue, i) => {
+        const [propertyKey, arg] = commandArgs[i];
 
         if (arg.mentions?.length) {
           if (arg.transform) {
@@ -98,16 +124,77 @@ export class DiscordService implements OnModuleInit {
             [] as Array<{ id: string }>,
           );
 
-          command.instance[propertyKey] = allMentions.find(
+          instance[propertyKey] = allMentions.find(
             mention => mention.id === id,
           );
         } else {
           await this.transformValue(
-            command.instance,
+            instance,
             propertyKey,
             arg.type,
             argValue,
             arg.transform,
+          );
+        }
+      }),
+    );
+  }
+
+  private async createValidationError(
+    instance: Command['instance'],
+    handler: ErrorHandler | undefined,
+    message: Discord.Message,
+    value: any,
+  ): Promise<ValidationError> {
+    const error =
+      typeof handler === 'function'
+        ? await toPromise(handler.bind(instance)(message, value))
+        : handler;
+
+    return new ValidationError(error || `Whatever value ${value} isn't valid`);
+  }
+
+  // Should return error messages
+  private async validateArgs(
+    message: Discord.Message,
+    instance: Command['instance'],
+    commandArgs: [string, ArgOptions][],
+    userArgs: string[],
+  ) {
+    if (userArgs.length !== commandArgs.length) {
+      throw new ValidationError('Invalid amount of arguments');
+    }
+
+    await Promise.all(
+      userArgs.map(async (argValue, i) => {
+        const [propertyKey, arg]: [string, ArgOptions] = commandArgs[i];
+        const value = instance[propertyKey];
+
+        if (typeof arg.validate === 'function') {
+          const valid = await toPromise(arg.validate(message, value));
+          if (!valid) {
+            throw await this.createValidationError(
+              instance,
+              arg.error,
+              message,
+              value,
+            );
+          }
+        } else if (arg.type === Boolean && typeof value !== 'boolean') {
+          throw new ValidationError(
+            `Whatever value ${value} isn't a valid boolean`,
+          );
+        } else if (arg.type === String && typeof value !== 'string') {
+          throw new ValidationError(`Whatever value ${value} isn't a string`);
+        } else if (
+          typeof arg.type !== 'object' &&
+          !(value instanceof arg.type)
+        ) {
+          throw await this.createValidationError(
+            instance,
+            arg.error,
+            message,
+            value,
           );
         }
       }),
@@ -119,14 +206,62 @@ export class DiscordService implements OnModuleInit {
     command: Command,
     args: string[],
   ): Promise<void> {
-    await this.transformArgs(message, command, args);
+    const commandArgs = [...command.args.entries()];
+
+    await this.transformArgs(message, command.instance, commandArgs, args);
+    await this.validateArgs(message, command.instance, commandArgs, args);
   }
 
-  private getCommand(name: string): Command | null {
+  private getCommandOptions(
+    command: Command,
+    name: string,
+  ): OptionOptions | undefined {
+    return Object.values(command.options).find(
+      option => option.name === name || option.aliases?.includes(name),
+    );
+  }
+
+  private getCommand(name: string): Command | undefined {
     return (
       this.commands.get(name) ||
       this.commands.find(command => !!command.aliases?.includes(name))
     );
+  }
+
+  // TODO
+  private displayCommandUsage(
+    message: Discord.Message,
+    command: Command,
+  ): Promise<Discord.Message | Discord.Message[]> {
+    let usage = `Usage: ${command.name}`;
+
+    console.log(command);
+
+    const argValues = Object.values(command.args);
+    if (argValues.length) {
+      usage += `
+Arguments:
+      `;
+    }
+
+    const optionValues = Object.values(command.options);
+    if (optionValues.length) {
+      usage += `
+
+Options:
+      `;
+
+      optionValues.forEach(option => {
+        const flags = [...option.aliases!, option.name]
+          .map(name => `--${name}`)
+          .join(', ');
+        usage += '  ' + flags;
+      });
+    }
+
+    console.log(usage);
+
+    return message.reply(usage);
   }
 
   // TODO: It shouldn't resolve until the Discord client is authorized **AND** ready
@@ -157,7 +292,9 @@ export class DiscordService implements OnModuleInit {
         if (!command) return;
 
         if (command.guildOnly && message.channel.type !== 'text') {
-          return message.reply(`I can't execute that command inside DMs!`);
+          return message.reply(
+            `I can't execute that command in private messages!`,
+          );
         }
 
         // TODO: Validate options / args
@@ -205,6 +342,10 @@ export class DiscordService implements OnModuleInit {
           delete args._;
           const commandOptions = args;
 
+          if (commandName === 'help') {
+            return this.displayCommandUsage(message, command);
+          }
+
           await Promise.all([
             this.processArgs(message, command, commandArgs),
             this.processOptions(message, command, commandOptions),
@@ -212,9 +353,13 @@ export class DiscordService implements OnModuleInit {
 
           return command.instance.handle(message);
         } catch (err) {
+          if (err instanceof ValidationError) {
+            return message.reply(err.message);
+          }
+
           this.logger.error(err);
           return message.reply(
-            'There was an error trying to execute that command!',
+            'There was an error trying to execute that command: ' + err.message,
           );
         }
       });

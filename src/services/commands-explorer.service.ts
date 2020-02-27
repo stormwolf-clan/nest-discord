@@ -2,22 +2,23 @@ import { Injectable } from '@nestjs/common';
 import { flattenDeep, identity } from 'lodash';
 import { ModulesContainer } from '@nestjs/core';
 
+import { Command } from '../interfaces';
+import { CommandOptionsCollection } from '../collections';
 import {
   COMMAND_ARG_OPTIONS,
   COMMAND_OPTION_OPTIONS,
   COMMAND_OPTIONS,
 } from '../tokens';
-import { Args, Command, Options } from '../interfaces';
 
 @Injectable()
 export class CommandsExplorerService {
   constructor(private readonly modulesContainer: ModulesContainer) {}
 
-  getCommandOptions(instance: Record<string, any>): Options {
+  getCommandOptions(instance: Record<string, any>): CommandOptionsCollection {
     return Reflect.getMetadata(COMMAND_OPTION_OPTIONS, instance.constructor);
   }
 
-  getCommandArgs(instance: Record<string, any>): Args {
+  getCommandArgs(instance: Record<string, any>): CommandOptionsCollection {
     return Reflect.getMetadata(COMMAND_ARG_OPTIONS, instance.constructor);
   }
 

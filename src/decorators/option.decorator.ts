@@ -1,5 +1,6 @@
 import { OptionOptions } from '../interfaces';
 import { COMMAND_OPTION_OPTIONS } from '../tokens';
+import { CommandOptionsCollection } from '../collections';
 
 export function Option(name?: string): PropertyDecorator;
 export function Option(options?: OptionOptions): PropertyDecorator;
@@ -14,10 +15,24 @@ export function Option(options: string | OptionOptions = {}) {
     if (options.name === 'help') {
       throw new Error(`Option cannot be named "help" as its reserved!`);
     }
-
     options.type = Reflect.getMetadata('design:type', target, propertyKey);
-    const commandOptions =
-      Reflect.getMetadata(COMMAND_OPTION_OPTIONS, target.constructor) || {};
+
+    let commandOptions = Reflect.getMetadata(
+      COMMAND_OPTION_OPTIONS,
+      target.constructor,
+    );
+    if (!commandOptions) {
+      commandOptions = new CommandOptionsCollection();
+      Reflect.defineMetadata(
+        COMMAND_OPTION_OPTIONS,
+        commandOptions,
+        target.constructor,
+      );
+    }
+
+    commandOptions.set(propertyKey, options);
+
+    /*const commandOptions = Reflect.getMetadata(COMMAND_OPTION_OPTIONS, target.constructor) || new CommandOptionsCollection();
 
     Reflect.defineMetadata(
       COMMAND_OPTION_OPTIONS,
@@ -26,6 +41,6 @@ export function Option(options: string | OptionOptions = {}) {
         [propertyKey]: options,
       },
       target.constructor,
-    );
+    );*/
   };
 }

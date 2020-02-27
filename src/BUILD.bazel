@@ -8,8 +8,10 @@ nest_library(
     ],
     deps = [
         "@npm//@nestjs/core",
+        "@npm//@types/common-tags",
         "@npm//@types/lodash",
         "@npm//@types/minimist",
+        "@npm//common-tags",
         "@npm//discord.js",
         "@npm//lodash",
         "@npm//minimist",
