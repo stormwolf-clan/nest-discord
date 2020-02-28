@@ -1,11 +1,11 @@
-import { ArgOptions } from '../interfaces';
+import { ArgOptions, Instance } from '../interfaces';
 import { COMMAND_ARG_OPTIONS } from '../tokens';
 import { CommandArgsCollection } from '../collections';
 
 export function Arg(name?: string): PropertyDecorator;
 export function Arg(options?: ArgOptions): PropertyDecorator;
 export function Arg(options: string | ArgOptions = {}) {
-  return (target: Record<string, any>, propertyKey: string) => {
+  return (target: Instance, propertyKey: string) => {
     if (typeof options === 'string') {
       options = { name: options };
     } else if (!options.name) {

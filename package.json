@@ -1,7 +1,6 @@
 {
   "name": "nest-discord",
-  "license": "MIT",
-  "version": "0.0.0-PLACEHOLDER",
+  "private": true,
   "scripts": {
     "bazel:format": "buildifier -v --warnings=attr-cfg,attr-license,attr-non-empty,attr-output-default,attr-single-file,constant-glob,ctx-args,depset-iteration,depset-union,dict-concatenation,duplicated-name,filetype,git-repository,http-archive,integer-division,load,load-on-top,native-build,native-package,output-group,package-name,package-on-top,positional-args,redefined-variable,repository-name,same-origin-load,string-iteration,unused-variable",
     "bazel:format:all": "find . -type f \\( -name \"*.bzl\" -or -name WORKSPACE -or -name BUILD -or -name BUILD.bazel \\) ! -path \"*/node_modules/*\" | xargs buildifier -v --warnings=attr-cfg,attr-license,attr-non-empty,attr-output-default,attr-single-file,constant-glob,ctx-args,depset-iteration,depset-union,dict-concatenation,duplicated-name,filetype,git-repository,http-archive,integer-division,load,load-on-top,native-build,native-package,output-group,package-name,package-on-top,positional-args,redefined-variable,repository-name,same-origin-load,string-iteration,unused-variable",
@@ -27,21 +26,11 @@
       "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
     }
   },
-  "peerDependencies": {
-    "@nestjs/common": "6.11.8",
-    "@nestjs/core": "6.11.8",
-    "reflect-metadata": "0.1.13",
-    "rxjs": "6.5.4"
-  },
-  "dependencies": {
-    "common-tags": "1.8.0",
+  "devDependencies": {
     "lodash": "4.17.15",
     "tslib": "1.11.0",
     "discord.js": "11.5.1",
-    "minimist": "1.2.0"
-  },
-  "devDependencies": {
-    "@types/common-tags": "1.8.0",
+    "minimist": "1.2.0",
     "@nestjs/common": "6.11.8",
     "@types/minimist": "1.2.0",
     "@nestjs/core": "6.11.8",

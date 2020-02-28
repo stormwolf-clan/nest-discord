@@ -3,3 +3,4 @@ export { Discord };
 export { CommandHandler } from './interfaces';
 export * from './decorators';
 export * from './discord.module';
+export * from './errors';

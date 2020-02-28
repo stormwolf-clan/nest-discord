@@ -13,6 +13,7 @@ import {
   Command,
   DiscordModuleOptions,
   ErrorHandler,
+  Instance,
   OptionOptions,
   TransformHandler,
   ValidateHandler,
@@ -38,7 +39,7 @@ export class DiscordService implements OnModuleInit {
   ) {}
 
   private async transformValue(
-    instance: Record<string, any>,
+    instance: Instance,
     propertyKey: string,
     type: Function,
     value: any,
@@ -69,7 +70,7 @@ export class DiscordService implements OnModuleInit {
   }
 
   private async validateValue(
-    instance: Record<string, any>,
+    instance: Instance,
     propertyKey: string,
     type: Function,
     validate?: ValidateHandler<any, any>,
@@ -79,7 +80,7 @@ export class DiscordService implements OnModuleInit {
   }
 
   /*private async validateValue(
-    instance: Record<string, any>,
+    instance: Instance,
     propertyKey: string,
     type: Function,
     validate?: ValidateHandler<any, any>,
@@ -114,19 +115,21 @@ export class DiscordService implements OnModuleInit {
             );
           }
 
-          const id = USER_MENTION_REGEX.exec(argValue)![1];
+          // TODO: Pass to validation
+          const id = USER_MENTION_REGEX.exec(argValue);
+          if (id) {
+            const allMentions = arg.mentions.reduce(
+              (mentions, mention) => [
+                ...message.mentions[mention].values(),
+                ...mentions,
+              ],
+              [] as Array<{ id: string }>,
+            );
 
-          const allMentions = arg.mentions.reduce(
-            (mentions, mention) => [
-              ...message.mentions[mention].values(),
-              ...mentions,
-            ],
-            [] as Array<{ id: string }>,
-          );
-
-          instance[propertyKey] = allMentions.find(
-            mention => mention.id === id,
-          );
+            instance[propertyKey] = allMentions.find(
+              mention => mention.id === id[1],
+            );
+          }
         } else {
           await this.transformValue(
             instance,
@@ -140,18 +143,19 @@ export class DiscordService implements OnModuleInit {
     );
   }
 
-  private async createValidationError(
+  private async throwValidationError(
     instance: Command['instance'],
     handler: ErrorHandler | undefined,
     message: Discord.Message,
     value: any,
-  ): Promise<ValidationError> {
+    defaultError = `Whatever value ${value} isn't valid`,
+  ): Promise<void> {
     const error =
       typeof handler === 'function'
         ? await toPromise(handler.bind(instance)(message, value))
         : handler;
 
-    return new ValidationError(error || `Whatever value ${value} isn't valid`);
+    throw new ValidationError(error || defaultError);
   }
 
   // Should return error messages
@@ -162,6 +166,7 @@ export class DiscordService implements OnModuleInit {
     userArgs: string[],
   ) {
     if (userArgs.length !== commandArgs.length) {
+      // TODO: Display which arguments are missing or excessive
       throw new ValidationError('Invalid amount of arguments');
     }
 
@@ -172,30 +177,29 @@ export class DiscordService implements OnModuleInit {
 
         if (typeof arg.validate === 'function') {
           const valid = await toPromise(arg.validate(message, value));
-          if (!valid) {
-            throw await this.createValidationError(
-              instance,
-              arg.error,
-              message,
-              value,
-            );
-          }
-        } else if (arg.type === Boolean && typeof value !== 'boolean') {
+          // BREAK
+          if (valid) return;
+
+          await this.throwValidationError(instance, arg.error, message, value);
+        }
+
+        if (arg.type === Boolean) {
+          // BREAK
+          if (typeof value === 'boolean') return;
+
           throw new ValidationError(
             `Whatever value ${value} isn't a valid boolean`,
           );
-        } else if (arg.type === String && typeof value !== 'string') {
+        }
+
+        if (arg.type === String) {
+          // BREAK
+          if (typeof value === 'string') return;
+
           throw new ValidationError(`Whatever value ${value} isn't a string`);
-        } else if (
-          typeof arg.type !== 'object' &&
-          !(value instanceof arg.type)
-        ) {
-          throw await this.createValidationError(
-            instance,
-            arg.error,
-            message,
-            value,
-          );
+        }
+        if (typeof arg.type !== 'object' && !(value instanceof arg.type)) {
+          await this.throwValidationError(instance, arg.error, message, value);
         }
       }),
     );
@@ -235,8 +239,6 @@ export class DiscordService implements OnModuleInit {
   ): Promise<Discord.Message | Discord.Message[]> {
     let usage = `Usage: ${command.name}`;
 
-    console.log(command);
-
     const argValues = Object.values(command.args);
     if (argValues.length) {
       usage += `
@@ -258,8 +260,6 @@ Options:
         usage += '  ' + flags;
       });
     }
-
-    console.log(usage);
 
     return message.reply(usage);
   }
@@ -337,7 +337,11 @@ Options:
         }
 
         try {
-          command.instance = await this.moduleRef.create(command.target);
+          // @ts-ignore
+          command.instance = await this.moduleRef.instantiateClass(
+            command.target,
+            command.module,
+          );
           const commandArgs = args._.filter(arg => arg !== '');
           delete args._;
           const commandOptions = args;
@@ -351,13 +355,13 @@ Options:
             this.processOptions(message, command, commandOptions),
           ]);
 
-          return command.instance.handle(message);
+          return toPromise(command.handle.bind(command.instance)(message));
         } catch (err) {
           if (err instanceof ValidationError) {
             return message.reply(err.message);
           }
 
-          this.logger.error(err);
+          console.error(err);
           return message.reply(
             'There was an error trying to execute that command: ' + err.message,
           );

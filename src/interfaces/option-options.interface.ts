@@ -1,6 +1,11 @@
-import { ErrorHandler, TransformHandler, ValidateHandler } from './types';
+import {
+  ErrorHandler,
+  Instance,
+  TransformHandler,
+  ValidateHandler,
+} from './types';
 
-export interface OptionOptions<T = Record<string, any>, V = string> {
+export interface OptionOptions<T = Instance, V = string> {
   name?: string;
   type?: any;
   description?: string;

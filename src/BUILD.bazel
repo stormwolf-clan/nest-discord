@@ -1,20 +1,33 @@
 load("//tools:defaults.bzl", "nest_library")
+load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
+
+package(default_visibility = ["//visibility:public"])
 
 nest_library(
     name = "src",
     srcs = glob(["**/*.ts"]),
-    visibility = [
-        "//visibility:public",
-    ],
     deps = [
         "@npm//@nestjs/core",
-        "@npm//@types/common-tags",
         "@npm//@types/lodash",
         "@npm//@types/minimist",
-        "@npm//common-tags",
         "@npm//discord.js",
         "@npm//lodash",
         "@npm//minimist",
         "@npm//rxjs",
+    ],
+)
+
+pkg_npm(
+    name = "npm",
+    srcs = [
+        "package.json",
+    ],
+    substitutions = {
+        "nest_discord/src": "nest-discord",
+    },
+    deps = [
+        ":src",
+        "//:LICENSE",
+        "//:README.md",
     ],
 )

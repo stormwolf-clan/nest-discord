@@ -1,11 +1,12 @@
-import { Discord, Arg, Command, CommandHandler, Option } from '../src';
+import { Discord, Arg, Command, Option, Handle } from '../src';
+import { TestService } from './test.service';
 
 //
 @Command({
-  name: 'help',
+  name: 'test',
   description: 'Display help message',
 })
-export class HelpCommand implements CommandHandler {
+export class HelpCommand {
   @Arg({
     mentions: ['users'],
   })
@@ -19,6 +20,9 @@ export class HelpCommand implements CommandHandler {
   })
   one: string;
 
+  constructor(private readonly test: TestService) {}
+
+  @Handle()
   handle(message: Discord.Message): void {
     console.log(this);
   }

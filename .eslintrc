@@ -21,6 +21,7 @@
     "prettier"
   ],
   "rules": {
+    "@typescript-eslint/ban-ts-ignore": "off",
     "prettier/prettier": [
       "error",
       {

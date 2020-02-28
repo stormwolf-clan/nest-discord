@@ -1,11 +1,12 @@
 import {
   ErrorHandler,
+  Instance,
   Mention,
   TransformHandler,
   ValidateHandler,
 } from './types';
 
-export interface ArgOptions<T = Record<string, any>, V = string> {
+export interface ArgOptions<T = Instance, V = string> {
   name?: string;
   mentions?: Mention[];
   multi?: boolean;

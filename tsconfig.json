@@ -11,6 +11,9 @@
     "target": "es2017",
     "baseUrl": ".",
     "rootDirs": [".", "dist/bin"],
+    "paths": {
+      "nest_discord/src": ["./src"]
+    },
     "types": []
   },
   "bazelOptions": {

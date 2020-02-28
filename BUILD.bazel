@@ -1,19 +1,7 @@
-load("@build_bazel_rules_nodejs//:index.bzl", "pkg_npm")
-
 package(default_visibility = ["//visibility:public"])
 
 exports_files([
     "tsconfig.json",
+    "README.md",
+    "LICENSE",
 ])
-
-pkg_npm(
-    name = "npm",
-    srcs = [
-        "LICENSE",
-        "README.md",
-        "package.json",
-    ],
-    deps = [
-        "//src",
-    ],
-)

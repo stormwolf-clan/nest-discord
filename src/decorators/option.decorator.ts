@@ -1,11 +1,11 @@
-import { OptionOptions } from '../interfaces';
+import { Instance, OptionOptions } from '../interfaces';
 import { COMMAND_OPTION_OPTIONS } from '../tokens';
 import { CommandOptionsCollection } from '../collections';
 
 export function Option(name?: string): PropertyDecorator;
 export function Option(options?: OptionOptions): PropertyDecorator;
 export function Option(options: string | OptionOptions = {}) {
-  return (target: Record<string, any>, propertyKey: string) => {
+  return (target: Instance, propertyKey: string) => {
     if (typeof options === 'string') {
       options = { name: options };
     } else if (!options.name) {
